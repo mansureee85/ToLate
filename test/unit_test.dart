@@ -1,13 +1,16 @@
+import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tolate/core/constants/property_enums.dart';
 import 'package:tolate/core/errors/app_error.dart';
 import 'package:tolate/core/media/media_asset.dart';
+import 'package:tolate/core/media/media_picker.dart';
 import 'package:tolate/core/media/media_validation.dart';
 import 'package:tolate/core/validation/money_validator.dart';
 import 'package:tolate/core/validation/phone_validator.dart';
 import 'package:tolate/data/models/location_models.dart';
 import 'package:tolate/data/models/user_model.dart';
 import 'package:tolate/data/repositories/admin_repository.dart';
+import 'package:tolate/data/repositories/auth_repository.dart';
 import 'package:tolate/data/repositories/location_repository.dart';
 import 'package:tolate/data/repositories/property_repository.dart';
 
@@ -227,6 +230,47 @@ void main() {
       final generalWardsSecondCall = locRepo.getUnionsAndWardsForUpazila('thana_bhaluka');
       expect(generalWards[0], equals(generalWardsSecondCall[0]));
       expect(identical(generalWards[0], generalWardsSecondCall[0]), isTrue);
+    });
+  });
+
+  group('MediaPicker & Platform Media Representation', () {
+    test('PickedMediaFile calculates size and enforces 5MB limit', () {
+      final validFile = PickedMediaFile(
+        path: '/temp/profile.jpg',
+        name: 'profile.jpg',
+        bytes: Uint8List(1024 * 1024 * 2), // 2 MB
+        sizeBytes: 1024 * 1024 * 2,
+        mimeType: 'image/jpeg',
+      );
+      expect(validFile.isUnder5MB, isTrue);
+
+      final oversizedFile = PickedMediaFile(
+        path: '/temp/huge.jpg',
+        name: 'huge.jpg',
+        bytes: Uint8List(1024 * 1024 * 6), // 6 MB
+        sizeBytes: 1024 * 1024 * 6,
+        mimeType: 'image/jpeg',
+      );
+      expect(oversizedFile.isUnder5MB, isFalse);
+    });
+  });
+
+  group('Firebase Phone Auth & Zero Test Bypass', () {
+    test('Verifying OTP without an active session throws AuthError', () async {
+      final authRepo = AuthRepository();
+      // Verifying without requestOtp must reject and have no 123456 bypass
+      expect(
+        () => authRepo.verifyOtp('123456'),
+        throwsA(isA<AuthError>()),
+      );
+    });
+
+    test('Rejects OTP with invalid length', () async {
+      final authRepo = AuthRepository();
+      expect(
+        () => authRepo.verifyOtp('123'),
+        throwsA(isA<AuthError>()),
+      );
     });
   });
 }

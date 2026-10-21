@@ -1,4 +1,6 @@
+import 'package:uuid/uuid.dart';
 import '../core/media/media_asset.dart';
+import '../core/media/media_picker.dart';
 
 /// Platform-agnostic interface for media picking (Camera, Gallery, File).
 abstract class PlatformMediaPicker {
@@ -16,63 +18,86 @@ abstract class PlatformMediaPicker {
   });
 }
 
-/// Factory selector returning the correct platform adapter.
+/// Factory selector returning the real platform adapter without dummy data.
 class PlatformAdapterFactory {
   static PlatformMediaPicker getMediaPicker() {
-    return FallbackMediaPicker();
+    return RealPlatformMediaPicker();
   }
 }
 
-/// Resilient cross-platform fallback implementation.
-class FallbackMediaPicker implements PlatformMediaPicker {
+/// Real implementation connecting PlatformMediaPicker with MediaPicker adapters
+class RealPlatformMediaPicker implements PlatformMediaPicker {
+  final MediaPicker _delegate = getPlatformMediaPicker();
+
   @override
   Future<List<MediaAsset>> pickImages({
     required String uploaderUserId,
     bool allowMultiple = true,
   }) async {
-    // Platform implementation safely returns uploaded file records
-    return [
-      MediaAsset(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        uploaderUserId: uploaderUserId,
-        mediaType: MediaType.image,
-        localPath: 'assets/images/sample_property.jpg',
-        publicUrl: 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=800',
-        fileSizeBytes: 1024 * 500,
-        moderationState: MediaModerationState.uploaded,
-        createdAt: DateTime.now(),
-      )
-    ];
+    if (allowMultiple) {
+      final pickedFiles = await _delegate.pickMultiImage();
+      return pickedFiles.map((file) {
+        return MediaAsset(
+          id: const Uuid().v4(),
+          uploaderUserId: uploaderUserId,
+          mediaType: MediaType.image,
+          localPath: file.path,
+          publicUrl: null, // Will be set only after real upload to Firebase Storage
+          fileSizeBytes: file.sizeBytes,
+          moderationState: MediaModerationState.pendingUpload,
+          createdAt: DateTime.now(),
+        );
+      }).toList();
+    } else {
+      final file = await _delegate.pickImage(source: MediaSourceType.gallery);
+      if (file == null) return [];
+      return [
+        MediaAsset(
+          id: const Uuid().v4(),
+          uploaderUserId: uploaderUserId,
+          mediaType: MediaType.image,
+          localPath: file.path,
+          publicUrl: null,
+          fileSizeBytes: file.sizeBytes,
+          moderationState: MediaModerationState.pendingUpload,
+          createdAt: DateTime.now(),
+        )
+      ];
+    }
   }
 
   @override
   Future<MediaAsset?> pickVideo({required String uploaderUserId}) async {
+    final file = await _delegate.pickVideo(source: MediaSourceType.gallery);
+    if (file == null) return null;
+
     return MediaAsset(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      id: const Uuid().v4(),
       uploaderUserId: uploaderUserId,
       mediaType: MediaType.video,
-      localPath: 'assets/videos/walkthrough.mp4',
-      publicUrl: 'https://sample-videos.com/video123/mp4/720/big_buck_bunny_720p_1mb.mp4',
-      fileSizeBytes: 1024 * 1024 * 3,
-      durationSeconds: 45,
-      moderationState: MediaModerationState.uploaded,
+      localPath: file.path,
+      publicUrl: null,
+      fileSizeBytes: file.sizeBytes,
+      moderationState: MediaModerationState.pendingUpload,
       createdAt: DateTime.now(),
     );
   }
 
   @override
   Future<MediaAsset?> captureCameraImage({required String uploaderUserId}) async {
+    final file = await _delegate.pickImage(source: MediaSourceType.camera);
+    if (file == null) return null;
+
     return MediaAsset(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      id: const Uuid().v4(),
       uploaderUserId: uploaderUserId,
       mediaType: MediaType.image,
-      localPath: 'camera_capture.jpg',
-      publicUrl: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800',
-      fileSizeBytes: 1024 * 600,
+      localPath: file.path,
+      publicUrl: null,
+      fileSizeBytes: file.sizeBytes,
       isLiveCameraCaptured: true,
-      moderationState: MediaModerationState.uploaded,
+      moderationState: MediaModerationState.pendingUpload,
       createdAt: DateTime.now(),
     );
   }
 }
-

@@ -46,7 +46,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
   Future<void> _handleVerify() async {
     final code = _otpController.text.trim();
     if (code.length != AppConstants.otpLength) {
-      setState(() => _errorMessage = '৬ ডিজিটের ওটিপি লিখুন (পরীক্ষার জন্য: 123456)');
+      setState(() => _errorMessage = '৬ ডিজিটের সঠিক ওটিপি (OTP) কোড দিন।');
       return;
     }
 

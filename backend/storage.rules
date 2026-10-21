@@ -15,7 +15,7 @@ service firebase.storage {
     }
 
     // 1. User Profiles & Cover Photos
-    match /users/{userId}/{photoType}/{fileName} {
+    match /users/{userId}/{allPaths=**} {
       allow read: if true;
       allow write: if isAuthenticated() && request.auth.uid == userId
                    && isImage()

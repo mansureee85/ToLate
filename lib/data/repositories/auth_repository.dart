@@ -1,7 +1,8 @@
 import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:uuid/uuid.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/constants/property_enums.dart';
 import '../../core/errors/app_error.dart';
@@ -9,12 +10,13 @@ import '../../core/services/firebase_service.dart';
 import '../../core/validation/phone_validator.dart';
 import '../models/user_model.dart';
 
-/// Authentication and User Session Repository.
+/// Authentication and User Session Repository using Firebase Phone Auth.
 class AuthRepository extends ChangeNotifier {
   UserModel? _currentUser;
   bool _isLoading = false;
   String? _pendingPhoneNumber;
-  String? _expectedOtp;
+  String? _verificationId;
+  int? _resendToken;
   DateTime? _lastOtpSentTime;
   int _otpAttempts = 0;
 
@@ -22,6 +24,7 @@ class AuthRepository extends ChangeNotifier {
   bool get isAuthenticated => _currentUser != null;
   bool get isLoading => _isLoading;
   String? get pendingPhoneNumber => _pendingPhoneNumber;
+  String? get verificationId => _verificationId;
 
   bool get canResendOtp {
     if (_lastOtpSentTime == null) return true;
@@ -79,7 +82,7 @@ class AuthRepository extends ChangeNotifier {
     }
   }
 
-  /// Request OTP to Bangladesh phone number.
+  /// Request OTP to Bangladesh phone number via Firebase Phone Auth.
   Future<void> requestOtp(String rawPhone) async {
     if (!PhoneValidator.isValidBdPhone(rawPhone)) {
       throw const ValidationError('অনুগ্রহ করে সঠিক বাংলাদেশি মোবাইল নম্বর দিন।');
@@ -96,20 +99,61 @@ class AuthRepository extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
 
+    final completer = Completer<void>();
+
     try {
-      // In production: Cloud Function / Firebase Phone Auth / Bangladesh SMS Gateway (e.g. SSL Wireless / Greenweb)
+      final auth = FirebaseService.auth ?? FirebaseAuth.instance;
       _pendingPhoneNumber = normalized;
       _lastOtpSentTime = DateTime.now();
       _otpAttempts = 0;
-      // In secure production, the OTP is stored server-side.
-      _expectedOtp = '123456'; 
-    } finally {
+
+      await auth.verifyPhoneNumber(
+        phoneNumber: normalized,
+        timeout: const Duration(seconds: 60),
+        forceResendingToken: _resendToken,
+        verificationCompleted: (PhoneAuthCredential credential) async {
+          // Instant verification / auto-retrieval
+          try {
+            final userCredential = await auth.signInWithCredential(credential);
+            if (userCredential.user != null) {
+              await _handleSuccessfulSignIn(userCredential.user!);
+            }
+          } catch (e) {
+            debugPrint('[AuthRepository] Auto-verification sign-in notice: $e');
+          }
+        },
+        verificationFailed: (FirebaseAuthException e) {
+          _isLoading = false;
+          notifyListeners();
+          final errorMsg = _mapFirebasePhoneAuthError(e);
+          if (!completer.isCompleted) {
+            completer.completeError(AuthError(errorMsg));
+          }
+        },
+        codeSent: (String verificationId, int? resendToken) {
+          _verificationId = verificationId;
+          _resendToken = resendToken;
+          _isLoading = false;
+          notifyListeners();
+          if (!completer.isCompleted) {
+            completer.complete();
+          }
+        },
+        codeAutoRetrievalTimeout: (String verificationId) {
+          _verificationId = verificationId;
+        },
+      );
+
+      return await completer.future;
+    } catch (e) {
       _isLoading = false;
       notifyListeners();
+      if (e is AppError) rethrow;
+      throw AuthError('ওটিপি পাঠাতে সমস্যা হয়েছে: ${e.toString()}');
     }
   }
 
-  /// Verify OTP code and establish user session.
+  /// Verify OTP code using Firebase Phone Auth and establish user session.
   Future<UserModel> verifyOtp(String enteredOtp) async {
     if (_pendingPhoneNumber == null) {
       throw const AuthError('কোনো ফোন নম্বর যাচাইয়ের জন্য জমা দেওয়া হয়নি।');
@@ -119,56 +163,108 @@ class AuthRepository extends ChangeNotifier {
       throw const ValidationError('৬ ডিজিটের সঠিক ওটিপি (OTP) কোড দিন।');
     }
 
+    if (_verificationId == null) {
+      throw const AuthError('ভেরিফিকেশন সেশন পাওয়া যায়নি। অনুগ্রহ করে পুনরায় ওটিপি পাঠান।');
+    }
+
     if (_otpAttempts >= AppConstants.maxOtpAttempts) {
       throw const AuthError('সর্বোচ্চ চেষ্টার সীমা অতিক্রম হয়েছে। নতুন ওটিপি অনুরোধ করুন।');
     }
 
     _otpAttempts++;
-
-    if (enteredOtp.trim() != _expectedOtp) {
-      throw const AuthError('ভুল ওটিপি কোড। অনুগ্রহ করে সঠিক কোড দিন।');
-    }
-
     _isLoading = true;
     notifyListeners();
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final existingUserId = prefs.getString('auth_user_id') ?? const Uuid().v4();
-
-      final user = UserModel(
-        id: existingUserId,
-        displayName: prefs.getString('auth_display_name') ?? 'ইউজার',
-        phoneNumber: _pendingPhoneNumber,
-        isPhoneVerified: true,
-        roles: const [UserRole.tenant],
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
+      final auth = FirebaseService.auth ?? FirebaseAuth.instance;
+      final credential = PhoneAuthProvider.credential(
+        verificationId: _verificationId!,
+        smsCode: enteredOtp.trim(),
       );
 
-      _currentUser = user;
-      _pendingPhoneNumber = null;
-      _expectedOtp = null;
-
-      await prefs.setString('auth_user_id', user.id);
-      await prefs.setString('auth_phone', user.phoneNumber!);
-      await prefs.setBool('auth_phone_verified', true);
-
-      // Cloud Firestore User Sync
-      try {
-        final firestore = FirebaseService.firestore;
-        if (firestore != null && FirebaseService.isConfigured) {
-          await firestore.collection('users').doc(user.id).set(user.toJson());
-        }
-      } catch (e) {
-        debugPrint('[AuthRepository] Firestore user sync notice: $e');
+      final userCredential = await auth.signInWithCredential(credential);
+      final firebaseUser = userCredential.user;
+      if (firebaseUser == null) {
+        throw const AuthError('ব্যবহারকারী যাচাইকরণ ব্যর্থ হয়েছে।');
       }
 
-      notifyListeners();
+      final user = await _handleSuccessfulSignIn(firebaseUser);
+      _pendingPhoneNumber = null;
+      _verificationId = null;
       return user;
+    } on FirebaseAuthException catch (e) {
+      throw AuthError(_mapFirebasePhoneAuthError(e));
     } finally {
       _isLoading = false;
       notifyListeners();
+    }
+  }
+
+  /// Internal session establishment and Firestore user syncing.
+  Future<UserModel> _handleSuccessfulSignIn(User firebaseUser) async {
+    final prefs = await SharedPreferences.getInstance();
+    final uid = firebaseUser.uid;
+    final phone = firebaseUser.phoneNumber ?? _pendingPhoneNumber;
+
+    UserModel? user;
+    final firestore = FirebaseService.firestore;
+    if (firestore != null) {
+      try {
+        final doc = await firestore.collection('users').doc(uid).get();
+        if (doc.exists && doc.data() != null) {
+          user = UserModel.fromJson(doc.data()!);
+        }
+      } catch (e) {
+        debugPrint('[AuthRepository] Firestore user fetch notice: $e');
+      }
+    }
+
+    user ??= UserModel(
+      id: uid,
+      displayName: prefs.getString('auth_display_name') ?? 'ইউজার',
+      phoneNumber: phone,
+      isPhoneVerified: true,
+      roles: const [UserRole.tenant],
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    );
+
+    _currentUser = user;
+
+    await prefs.setString('auth_user_id', user.id);
+    if (user.phoneNumber != null) {
+      await prefs.setString('auth_phone', user.phoneNumber!);
+    }
+    await prefs.setBool('auth_phone_verified', true);
+
+    if (firestore != null) {
+      try {
+        await firestore.collection('users').doc(user.id).set(user.toJson(), SetOptions(merge: true));
+      } catch (e) {
+        debugPrint('[AuthRepository] Firestore user sync notice: $e');
+      }
+    }
+
+    notifyListeners();
+    return user;
+  }
+
+  String _mapFirebasePhoneAuthError(FirebaseAuthException e) {
+    switch (e.code) {
+      case 'invalid-verification-code':
+        return 'ভুল ওটিপি কোড। অনুগ্রহ করে সঠিক কোড দিন।';
+      case 'session-expired':
+        return 'ওটিপির মেয়াদ শেষ হয়ে গেছে। পুনরায় কোড পাঠানোর চেষ্টা করুন।';
+      case 'invalid-phone-number':
+        return 'মোবাইল নম্বরটি সঠিক ফরম্যাটে নেই।';
+      case 'too-many-requests':
+        return 'অতিরিক্ত চেষ্টা করা হয়েছে। অনুগ্রহ করে কিছুক্ষণ অপেক্ষা করুন।';
+      case 'quota-exceeded':
+        return 'এসএমএস কোটা শেষ হয়ে গেছে। অনুগ্রহ করে পরে চেষ্টা করুন।';
+      case 'network-request-failed':
+        return 'ইন্টারনেট সংযোগ চেক করুন এবং পুনরায় চেষ্টা করুন।';
+      default:
+        return e.message ?? 'মোবাইল ভেরিফিকেশন ব্যর্থ হয়েছে।';
     }
   }
 
