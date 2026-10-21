@@ -28,3 +28,4 @@ class AppConstants {
   static const int maxImageSizeBytes = 5 * 1024 * 1024; // 5 MB
   static const int maxVideoSizeBytes = 50 * 1024 * 1024; // 50 MB
 }
+

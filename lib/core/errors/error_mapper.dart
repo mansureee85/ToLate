@@ -14,3 +14,4 @@ class ErrorMapper {
         : 'An unexpected error occurred. Please try again.';
   }
 }
+

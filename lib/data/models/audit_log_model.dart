@@ -46,3 +46,4 @@ class AuditLogModel {
         timestamp: DateTime.parse(json['timestamp'] as String),
       );
 }
+

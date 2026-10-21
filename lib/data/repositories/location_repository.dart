@@ -141,3 +141,4 @@ class LocationRepository extends ChangeNotifier {
     }
   }
 }
+

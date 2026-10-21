@@ -40,3 +40,4 @@ class RouteNames {
   static const String adminLocations = '/admin/locations';
   static const String adminAudit = '/admin/audit';
 }
+

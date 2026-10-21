@@ -179,3 +179,4 @@ class ProposedArea {
         createdAt: DateTime.parse(json['createdAt'] as String),
       );
 }
+

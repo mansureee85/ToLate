@@ -256,3 +256,4 @@ class AuthRepository extends ChangeNotifier {
     notifyListeners();
   }
 }
+

@@ -58,3 +58,4 @@ class InquiriesDashboardScreen extends StatelessWidget {
     );
   }
 }
+

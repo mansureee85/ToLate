@@ -9,3 +9,4 @@ class MediaLimits {
   static const List<String> allowedImageExtensions = ['jpg', 'jpeg', 'png', 'webp'];
   static const List<String> allowedVideoExtensions = ['mp4', 'mov', 'webm'];
 }
+

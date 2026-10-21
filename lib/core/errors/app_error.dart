@@ -37,3 +37,4 @@ class ServerError extends AppError {
   const ServerError([String message = 'সার্ভারে সাময়িক সমস্যা হচ্ছে। কিছুক্ষণ পর আবার চেষ্টা করুন।'])
       : super(message, code: 'SERVER_ERROR');
 }
+

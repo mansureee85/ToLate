@@ -75,3 +75,4 @@ class FallbackMediaPicker implements PlatformMediaPicker {
     );
   }
 }
+

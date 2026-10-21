@@ -34,3 +34,4 @@ class MoneyValidator {
     return result;
   }
 }
+

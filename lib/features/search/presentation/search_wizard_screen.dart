@@ -540,3 +540,4 @@ class _SearchWizardScreenState extends State<SearchWizardScreen> {
     );
   }
 }
+

@@ -47,3 +47,4 @@ class StarRatingSelector extends StatelessWidget {
     );
   }
 }
+

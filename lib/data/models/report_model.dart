@@ -94,3 +94,4 @@ class ReportModel {
         createdAt: DateTime.parse(json['createdAt'] as String),
       );
 }
+

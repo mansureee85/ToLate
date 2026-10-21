@@ -254,3 +254,4 @@ class PropertyFeedCard extends StatelessWidget {
     return '${dt.day}/${dt.month}/${dt.year}';
   }
 }
+

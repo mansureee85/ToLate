@@ -129,3 +129,4 @@ class AdminVerificationCenterScreen extends StatelessWidget {
     );
   }
 }
+

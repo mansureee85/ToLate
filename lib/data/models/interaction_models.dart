@@ -233,3 +233,4 @@ class ConversationModel {
         unreadCount: (json['unreadCount'] as num?)?.toInt() ?? 0,
       );
 }
+

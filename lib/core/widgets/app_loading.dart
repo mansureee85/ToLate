@@ -45,3 +45,4 @@ class AppLoading extends StatelessWidget {
     );
   }
 }
+

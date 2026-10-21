@@ -193,3 +193,4 @@ class InteractionRepository extends ChangeNotifier {
     return report;
   }
 }
+

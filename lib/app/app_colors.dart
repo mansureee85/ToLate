@@ -34,3 +34,4 @@ class AppColors {
   static const Color verifiedBadge = Color(0xFF0284C7);
   static const Color unverifiedBadge = Color(0xFF9CA3AF);
 }
+
