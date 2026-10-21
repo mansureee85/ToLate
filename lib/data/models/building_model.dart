@@ -7,6 +7,7 @@ class BuildingModel {
   final String division;
   final String district;
   final String upazilaThana;
+  final String? unionWard;
   final String area;
   final String addressText;
   final double? latitude;
@@ -28,6 +29,7 @@ class BuildingModel {
     required this.division,
     required this.district,
     required this.upazilaThana,
+    this.unionWard,
     required this.area,
     required this.addressText,
     this.latitude,
@@ -51,6 +53,7 @@ class BuildingModel {
       'division': division,
       'district': district,
       'upazilaThana': upazilaThana,
+      'unionWard': unionWard,
       'area': area,
       'addressText': addressText,
       'latitude': latitude,
@@ -75,6 +78,7 @@ class BuildingModel {
       division: json['division'] as String,
       district: json['district'] as String,
       upazilaThana: json['upazilaThana'] as String,
+      unionWard: json['unionWard'] as String?,
       area: json['area'] as String,
       addressText: json['addressText'] as String,
       latitude: (json['latitude'] as num?)?.toDouble(),

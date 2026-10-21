@@ -37,6 +37,7 @@ class _PropertyWizardStartScreenState extends State<PropertyWizardStartScreen> {
   LocationDivision? _division;
   LocationDistrict? _district;
   LocationUpazilaThana? _upazila;
+  LocationUnionWard? _unionWard;
   String? _areaName;
   final TextEditingController _customAreaController = TextEditingController();
   final TextEditingController _addressDetailController = TextEditingController();
@@ -72,12 +73,14 @@ class _PropertyWizardStartScreenState extends State<PropertyWizardStartScreen> {
 
   void _generateDefaultTitleAndDescription() {
     final area = _areaName ?? _customAreaController.text.trim();
+    final ward = _unionWard?.nameBn;
     final thana = _upazila?.nameBn ?? '';
     final intentName = _intent.displayNameBn;
+    final locationText = [if (area.isNotEmpty) area, ?ward, if (thana.isNotEmpty) thana].join(', ');
 
-    _titleController.text = '$area, $thana - $_bedrooms বেডরুমে মনোরম $intentName';
+    _titleController.text = '$locationText - $_bedrooms বেডরুমে মনোরম $intentName';
     _descriptionController.text =
-        'লোকেশন: $area, $thana। $_bedrooms বেডরুম, $_bathrooms বাথরুম ও $_balconies টি বারান্দা সহ সম্পূর্ণ টাইলসকৃত ফ্ল্যাট ভাড়া দেওয়া হবে। মোট আয়তন ${_sizeController.text.isNotEmpty ? _sizeController.text : "১২০০"} স্কয়ার ফিট, ভবনের $_floorNumber তলায় অবস্থিত। সুযোগ-সুবিধা: ${_amenities.join(", ")}।';
+        'লোকেশন: $locationText। $_bedrooms বেডরুম, $_bathrooms বাথরুম ও $_balconies টি বারান্দা সহ সম্পূর্ণ টাইলসকৃত ফ্ল্যাট ভাড়া দেওয়া হবে। মোট আয়তন ${_sizeController.text.isNotEmpty ? _sizeController.text : "১২০০"} স্কয়ার ফিট, ভবনের $_floorNumber তলায় অবস্থিত। সুযোগ-সুবিধা: ${_amenities.join(", ")}।';
   }
 
   Future<void> _submitListing() async {
@@ -125,6 +128,7 @@ class _PropertyWizardStartScreenState extends State<PropertyWizardStartScreen> {
         division: _division?.nameBn ?? 'ঢাকা',
         district: _district?.nameBn ?? 'ঢাকা',
         upazilaThana: _upazila?.nameBn ?? 'মিরপুর',
+        unionWard: _unionWard?.nameBn,
         area: effectiveArea,
         addressText: _addressDetailController.text.trim(),
         totalFloors: _totalBuildingFloors,
@@ -164,6 +168,7 @@ class _PropertyWizardStartScreenState extends State<PropertyWizardStartScreen> {
         division: building.division,
         district: building.district,
         upazilaThana: building.upazilaThana,
+        unionWard: building.unionWard,
         area: building.area,
         addressText: building.addressText,
         price: double.tryParse(_priceController.text.trim()) ?? 0.0,
@@ -420,6 +425,7 @@ class _PropertyWizardStartScreenState extends State<PropertyWizardStartScreen> {
   Widget _step2Location(LocationRepository locRepo) {
     final districts = _division != null ? locRepo.getDistrictsForDivision(_division!.id) : <LocationDistrict>[];
     final upazilas = _district != null ? locRepo.getUpazilasForDistrict(_district!.id) : <LocationUpazilaThana>[];
+    final unionWards = _upazila != null ? locRepo.getUnionsAndWardsForUpazila(_upazila!.id) : <LocationUnionWard>[];
     final areas = _upazila != null ? locRepo.getAreasForUpazila(_upazila!.id) : <CanonicalArea>[];
 
     return Column(
@@ -435,6 +441,7 @@ class _PropertyWizardStartScreenState extends State<PropertyWizardStartScreen> {
             _division = d;
             _district = null;
             _upazila = null;
+            _unionWard = null;
             _areaName = null;
           }),
         ),
@@ -447,6 +454,7 @@ class _PropertyWizardStartScreenState extends State<PropertyWizardStartScreen> {
             onChanged: (d) => setState(() {
               _district = d;
               _upazila = null;
+              _unionWard = null;
               _areaName = null;
             }),
           ),
@@ -458,11 +466,19 @@ class _PropertyWizardStartScreenState extends State<PropertyWizardStartScreen> {
             items: upazilas.map((u) => DropdownMenuItem(value: u, child: Text(u.nameBn))).toList(),
             onChanged: (u) => setState(() {
               _upazila = u;
+              _unionWard = null;
               _areaName = null;
             }),
           ),
         const SizedBox(height: 12),
         if (_upazila != null) ...[
+          DropdownButtonFormField<LocationUnionWard>(
+            value: _unionWard,
+            decoration: const InputDecoration(labelText: 'ইউনিয়ন / ওয়ার্ড'),
+            items: unionWards.map((uw) => DropdownMenuItem(value: uw, child: Text('${uw.nameBn} (${uw.type == LocalityType.union ? "ইউনিয়ন" : "ওয়ার্ড"})'))).toList(),
+            onChanged: (uw) => setState(() => _unionWard = uw),
+          ),
+          const SizedBox(height: 12),
           if (areas.isNotEmpty) ...[
             DropdownButtonFormField<String>(
               value: _areaName,
@@ -475,7 +491,7 @@ class _PropertyWizardStartScreenState extends State<PropertyWizardStartScreen> {
           AppTextField(
             controller: _customAreaController,
             label: 'রাস্তা / সেক্টর / নির্দিষ্ট এলাকার নাম',
-            hint: 'যেমন: রোড ১০/এ, সেক্টর ৪',
+            hint: 'যেমন: রোড ১০/এ, সেক্টর ৪ বা মহল্লা',
           ),
           const SizedBox(height: 12),
           AppTextField(

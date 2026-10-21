@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 import '../../core/constants/property_enums.dart';
+import '../../core/services/firebase_service.dart';
 import '../models/building_model.dart';
 import '../models/property_listing_model.dart';
 import '../models/property_unit_model.dart';
@@ -11,6 +12,7 @@ class PropertySearchFilter {
   final String? division;
   final String? district;
   final String? upazilaThana;
+  final String? unionWard;
   final String? area;
   final double? minPrice;
   final double? maxPrice;
@@ -25,6 +27,7 @@ class PropertySearchFilter {
     this.division,
     this.district,
     this.upazilaThana,
+    this.unionWard,
     this.area,
     this.minPrice,
     this.maxPrice,
@@ -65,6 +68,7 @@ class PropertyRepository extends ChangeNotifier {
     required String division,
     required String district,
     required String upazilaThana,
+    String? unionWard,
     required String area,
     required String addressText,
     double? latitude,
@@ -82,6 +86,7 @@ class PropertyRepository extends ChangeNotifier {
       division: division,
       district: district,
       upazilaThana: upazilaThana,
+      unionWard: unionWard,
       area: area,
       addressText: addressText,
       latitude: latitude,
@@ -96,6 +101,17 @@ class PropertyRepository extends ChangeNotifier {
     );
 
     _buildings.add(building);
+
+    // Sync to Cloud Firestore if connected
+    try {
+      final firestore = FirebaseService.firestore;
+      if (firestore != null && FirebaseService.isConfigured) {
+        await firestore.collection('buildings').doc(building.id).set(building.toJson());
+      }
+    } catch (e) {
+      debugPrint('[PropertyRepository] Firestore building sync: $e');
+    }
+
     notifyListeners();
     return building;
   }
@@ -157,6 +173,17 @@ class PropertyRepository extends ChangeNotifier {
     );
 
     _units.add(unit);
+
+    // Sync to Cloud Firestore if connected
+    try {
+      final firestore = FirebaseService.firestore;
+      if (firestore != null && FirebaseService.isConfigured) {
+        await firestore.collection('units').doc(unit.id).set(unit.toJson());
+      }
+    } catch (e) {
+      debugPrint('[PropertyRepository] Firestore unit sync: $e');
+    }
+
     notifyListeners();
     return unit;
   }
@@ -185,8 +212,44 @@ class PropertyRepository extends ChangeNotifier {
 
   Future<PropertyListingModel> createListing(PropertyListingModel listing) async {
     _listings.add(listing);
+
+    // Sync to Cloud Firestore if connected
+    try {
+      final firestore = FirebaseService.firestore;
+      if (firestore != null && FirebaseService.isConfigured) {
+        await firestore.collection('listings').doc(listing.id).set(listing.toJson());
+      }
+    } catch (e) {
+      debugPrint('[PropertyRepository] Firestore listing sync: $e');
+    }
+
     notifyListeners();
     return listing;
+  }
+
+  /// Pull listings from Cloud Firestore
+  Future<void> fetchListingsFromCloud() async {
+    try {
+      final firestore = FirebaseService.firestore;
+      if (firestore != null && FirebaseService.isConfigured) {
+        final snapshot = await firestore
+            .collection('listings')
+            .where('status', isEqualTo: 'published')
+            .get();
+        for (final doc in snapshot.docs) {
+          final listing = PropertyListingModel.fromJson(doc.data());
+          final idx = _listings.indexWhere((l) => l.id == listing.id);
+          if (idx == -1) {
+            _listings.add(listing);
+          } else {
+            _listings[idx] = listing;
+          }
+        }
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('[PropertyRepository] Fetch from cloud: $e');
+    }
   }
 
   Future<void> updateListingStatus({
@@ -240,6 +303,12 @@ class PropertyRepository extends ChangeNotifier {
       if (filter.upazilaThana != null &&
           filter.upazilaThana!.isNotEmpty &&
           listing.upazilaThana != filter.upazilaThana) {
+        return false;
+      }
+      if (filter.unionWard != null &&
+          filter.unionWard!.isNotEmpty &&
+          listing.unionWard != null &&
+          !listing.unionWard!.toLowerCase().contains(filter.unionWard!.toLowerCase())) {
         return false;
       }
       if (filter.area != null &&

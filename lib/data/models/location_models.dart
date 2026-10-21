@@ -83,6 +83,45 @@ class LocationUpazilaThana {
       );
 }
 
+enum LocalityType { union, ward, area }
+
+/// Bangladesh Union / Ward Model
+class LocationUnionWard {
+  final String id;
+  final String upazilaThanaId;
+  final String nameEn;
+  final String nameBn;
+  final LocalityType type;
+
+  const LocationUnionWard({
+    required this.id,
+    required this.upazilaThanaId,
+    required this.nameEn,
+    required this.nameBn,
+    this.type = LocalityType.ward,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'upazilaThanaId': upazilaThanaId,
+        'nameEn': nameEn,
+        'nameBn': nameBn,
+        'type': type.name,
+      };
+
+  factory LocationUnionWard.fromJson(Map<String, dynamic> json) =>
+      LocationUnionWard(
+        id: json['id'] as String,
+        upazilaThanaId: json['upazilaThanaId'] as String,
+        nameEn: json['nameEn'] as String,
+        nameBn: json['nameBn'] as String,
+        type: LocalityType.values.firstWhere(
+          (e) => e.name == json['type'],
+          orElse: () => LocalityType.ward,
+        ),
+      );
+}
+
 class CanonicalArea {
   final String id;
   final String upazilaThanaId;

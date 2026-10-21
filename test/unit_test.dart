@@ -5,8 +5,10 @@ import 'package:tolate/core/media/media_asset.dart';
 import 'package:tolate/core/media/media_validation.dart';
 import 'package:tolate/core/validation/money_validator.dart';
 import 'package:tolate/core/validation/phone_validator.dart';
+import 'package:tolate/data/models/location_models.dart';
 import 'package:tolate/data/models/user_model.dart';
 import 'package:tolate/data/repositories/admin_repository.dart';
+import 'package:tolate/data/repositories/location_repository.dart';
 import 'package:tolate/data/repositories/property_repository.dart';
 
 void main() {
@@ -176,6 +178,50 @@ void main() {
         ),
         throwsA(isA<PermissionDeniedError>()),
       );
+    });
+  });
+
+  group('Bangladesh Location Hierarchy & Administrative Structure', () {
+    test('All 8 divisions and 64 authentic districts are present', () {
+      final locRepo = LocationRepository();
+      expect(locRepo.divisions.length, 8);
+      expect(locRepo.districts.length, 64);
+
+      // Verify all divisions return districts
+      for (final div in locRepo.divisions) {
+        final dists = locRepo.getDistrictsForDivision(div.id);
+        expect(dists.isNotEmpty, isTrue, reason: 'Division ${div.nameEn} must have districts');
+      }
+
+      // Check specific divisions
+      expect(locRepo.getDistrictsForDivision('div_barishal').length, 6);
+      expect(locRepo.getDistrictsForDivision('div_rangpur').length, 8);
+      expect(locRepo.getDistrictsForDivision('div_mymensingh').length, 4);
+      expect(locRepo.getDistrictsForDivision('div_dhaka').length, 13);
+      expect(locRepo.getDistrictsForDivision('div_chattogram').length, 11);
+      expect(locRepo.getDistrictsForDivision('div_rajshahi').length, 8);
+      expect(locRepo.getDistrictsForDivision('div_khulna').length, 10);
+      expect(locRepo.getDistrictsForDivision('div_sylhet').length, 4);
+    });
+
+    test('Upazilas and Unions/Wards are available for selection', () {
+      final locRepo = LocationRepository();
+      
+      // Dhaka Upazilas
+      final dhakaUpazilas = locRepo.getUpazilasForDistrict('dist_dhaka');
+      expect(dhakaUpazilas.isNotEmpty, isTrue);
+
+      // Unions and Wards for Dhanmondi
+      final dhanmondiWards = locRepo.getUnionsAndWardsForUpazila('thana_dhanmondi');
+      expect(dhanmondiWards.isNotEmpty, isTrue);
+
+      // Unions and Wards for Savar (both union and ward)
+      final savarWards = locRepo.getUnionsAndWardsForUpazila('thana_savar');
+      expect(savarWards.any((w) => w.type == LocalityType.union), isTrue);
+
+      // Any upazila has available default wards
+      final generalWards = locRepo.getUnionsAndWardsForUpazila('thana_bhaluka');
+      expect(generalWards.isNotEmpty, isTrue);
     });
   });
 }

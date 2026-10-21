@@ -28,6 +28,7 @@ class _SearchWizardScreenState extends State<SearchWizardScreen> {
   LocationDivision? _selectedDivision;
   LocationDistrict? _selectedDistrict;
   LocationUpazilaThana? _selectedUpazila;
+  LocationUnionWard? _selectedUnionWard;
   String? _selectedAreaName;
   final TextEditingController _customAreaController = TextEditingController();
 
@@ -55,6 +56,7 @@ class _SearchWizardScreenState extends State<SearchWizardScreen> {
       division: _selectedDivision?.nameBn,
       district: _selectedDistrict?.nameBn,
       upazilaThana: _selectedUpazila?.nameBn,
+      unionWard: _selectedUnionWard?.nameBn,
       area: _selectedAreaName ??
           (_customAreaController.text.trim().isNotEmpty
               ? _customAreaController.text.trim()
@@ -90,6 +92,7 @@ class _SearchWizardScreenState extends State<SearchWizardScreen> {
     if (_selectedDivision != null) queryParams['division'] = _selectedDivision!.nameBn;
     if (_selectedDistrict != null) queryParams['district'] = _selectedDistrict!.nameBn;
     if (_selectedUpazila != null) queryParams['upazila'] = _selectedUpazila!.nameBn;
+    if (_selectedUnionWard != null) queryParams['unionWard'] = _selectedUnionWard!.nameBn;
     if (area != null) queryParams['area'] = area;
     if (_minBudgetController.text.isNotEmpty) queryParams['minPrice'] = _minBudgetController.text;
     if (_maxBudgetController.text.isNotEmpty) queryParams['maxPrice'] = _maxBudgetController.text;
@@ -285,6 +288,10 @@ class _SearchWizardScreenState extends State<SearchWizardScreen> {
         ? locRepo.getUpazilasForDistrict(_selectedDistrict!.id)
         : <LocationUpazilaThana>[];
 
+    final unionWards = _selectedUpazila != null
+        ? locRepo.getUnionsAndWardsForUpazila(_selectedUpazila!.id)
+        : <LocationUnionWard>[];
+
     final areas = _selectedUpazila != null
         ? locRepo.getAreasForUpazila(_selectedUpazila!.id)
         : <CanonicalArea>[];
@@ -314,6 +321,7 @@ class _SearchWizardScreenState extends State<SearchWizardScreen> {
               _selectedDivision = div;
               _selectedDistrict = null;
               _selectedUpazila = null;
+              _selectedUnionWard = null;
               _selectedAreaName = null;
             });
           },
@@ -335,6 +343,7 @@ class _SearchWizardScreenState extends State<SearchWizardScreen> {
               setState(() {
                 _selectedDistrict = dist;
                 _selectedUpazila = null;
+                _selectedUnionWard = null;
                 _selectedAreaName = null;
               });
             },
@@ -356,6 +365,7 @@ class _SearchWizardScreenState extends State<SearchWizardScreen> {
             onChanged: (u) {
               setState(() {
                 _selectedUpazila = u;
+                _selectedUnionWard = null;
                 _selectedAreaName = null;
               });
             },
@@ -363,7 +373,27 @@ class _SearchWizardScreenState extends State<SearchWizardScreen> {
           const SizedBox(height: 16),
         ],
 
-        // 4. Area / Locality or User Custom Input
+        // 4. Union / Ward
+        if (_selectedUpazila != null) ...[
+          DropdownButtonFormField<LocationUnionWard>(
+            value: _selectedUnionWard,
+            decoration: const InputDecoration(labelText: 'ইউনিয়ন / ওয়ার্ড (Union / Ward)'),
+            items: unionWards.map((uw) {
+              return DropdownMenuItem(
+                value: uw,
+                child: Text('${uw.nameBn} (${uw.type == LocalityType.union ? "ইউনিয়ন" : "ওয়ার্ড"})'),
+              );
+            }).toList(),
+            onChanged: (uw) {
+              setState(() {
+                _selectedUnionWard = uw;
+              });
+            },
+          ),
+          const SizedBox(height: 16),
+        ],
+
+        // 5. Area / Locality or User Custom Input
         if (_selectedUpazila != null) ...[
           if (areas.isNotEmpty) ...[
             DropdownButtonFormField<String>(
@@ -386,7 +416,7 @@ class _SearchWizardScreenState extends State<SearchWizardScreen> {
           AppTextField(
             controller: _customAreaController,
             label: 'নির্দিষ্ট রাস্তা, সেক্টর বা এলাকার নাম লিখুন',
-            hint: 'যেমন: রোড ১২, সেক্টর ৩, ব্লক ডি',
+            hint: 'যেমন: রোড ১২, সেক্টর ৩, ব্লক ডি বা মহল্লা',
             helperText: 'তালিকায় না থাকলে এখানে লিখে সার্চ করুন।',
           ),
         ],

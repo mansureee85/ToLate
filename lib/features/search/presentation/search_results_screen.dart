@@ -40,6 +40,7 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
       division: widget.queryParameters['division'],
       district: widget.queryParameters['district'],
       upazilaThana: widget.queryParameters['upazila'],
+      unionWard: widget.queryParameters['unionWard'],
       area: widget.queryParameters['area'],
       minPrice: double.tryParse(widget.queryParameters['minPrice'] ?? ''),
       maxPrice: double.tryParse(widget.queryParameters['maxPrice'] ?? ''),

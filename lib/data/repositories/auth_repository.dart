@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/constants/property_enums.dart';
 import '../../core/errors/app_error.dart';
+import '../../core/services/firebase_service.dart';
 import '../../core/validation/phone_validator.dart';
 import '../models/user_model.dart';
 
@@ -153,6 +154,16 @@ class AuthRepository extends ChangeNotifier {
       await prefs.setString('auth_phone', user.phoneNumber!);
       await prefs.setBool('auth_phone_verified', true);
 
+      // Cloud Firestore User Sync
+      try {
+        final firestore = FirebaseService.firestore;
+        if (firestore != null && FirebaseService.isConfigured) {
+          await firestore.collection('users').doc(user.id).set(user.toJson());
+        }
+      } catch (e) {
+        debugPrint('[AuthRepository] Firestore user sync notice: $e');
+      }
+
       notifyListeners();
       return user;
     } finally {
@@ -198,6 +209,16 @@ class AuthRepository extends ChangeNotifier {
       }
       if (updated.bio != null) {
         await prefs.setString('auth_bio', updated.bio!);
+      }
+
+      // Sync updated profile to Firestore
+      try {
+        final firestore = FirebaseService.firestore;
+        if (firestore != null && FirebaseService.isConfigured) {
+          await firestore.collection('users').doc(updated.id).set(updated.toJson());
+        }
+      } catch (e) {
+        debugPrint('[AuthRepository] Firestore profile update sync: $e');
       }
 
       _currentUser = updated;
