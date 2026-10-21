@@ -1,0 +1,49 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isImage() {
+      return request.resource.contentType.matches('image/.*');
+    }
+
+    function isVideo() {
+      return request.resource.contentType.matches('video/.*');
+    }
+
+    // 1. User Profiles & Cover Photos
+    match /users/{userId}/{photoType}/{fileName} {
+      allow read: if true;
+      allow write: if isAuthenticated() && request.auth.uid == userId
+                   && isImage()
+                   && request.resource.size < 5 * 1024 * 1024; // 5 MB
+    }
+
+    // 2. Property & Building Media (Photos and Walkthrough Video)
+    match /properties/{listingId}/{mediaType}/{fileName} {
+      allow read: if true;
+      allow write: if isAuthenticated()
+                   && (
+                     (isImage() && request.resource.size < 5 * 1024 * 1024) ||
+                     (isVideo() && request.resource.size < 50 * 1024 * 1024)
+                   );
+    }
+
+    // 3. Tenant Reviews: STRICTLY PHOTOS ONLY, REJECT VIDEO
+    match /reviews/{reviewId}/{fileName} {
+      allow read: if true;
+      allow write: if isAuthenticated()
+                   && isImage() // STRICT RULE: Disallows video!
+                   && !isVideo()
+                   && request.resource.size < 5 * 1024 * 1024;
+    }
+
+    // 4. Verification Evidence & Legal Deeds (Strictly Private to Staff)
+    match /verification_evidence/{caseId}/{fileName} {
+      allow read, write: if isAuthenticated() && (request.auth.token.admin == true || request.auth.token.role == 'verificationOfficer');
+    }
+  }
+}

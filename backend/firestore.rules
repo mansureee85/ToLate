@@ -1,0 +1,100 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && request.auth.token.admin == true;
+    }
+
+    function isModerator() {
+      return isAuthenticated() && (request.auth.token.admin == true || request.auth.token.role in ['listingModerator', 'contentModerator']);
+    }
+
+    // 1. Users Collection
+    match /users/{userId} {
+      // Public profile data is readable; private documents are strictly hidden
+      allow read: if true;
+      // Users can only update their own profile and CANNOT self-assign admin roles
+      allow write: if isOwner(userId) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['adminRole', 'isSuspended']);
+      allow write: if isAdmin();
+    }
+
+    // 2. Buildings Collection
+    match /buildings/{buildingId} {
+      allow read: if true;
+      allow create: if isAuthenticated();
+      allow update, delete: if isOwner(resource.data.ownerUserId) || isAdmin();
+    }
+
+    // 3. Property Units Collection (Independent status)
+    match /units/{unitId} {
+      allow read: if true;
+      allow create: if isAuthenticated();
+      allow update, delete: if isOwner(resource.data.createdByUserId) || isAdmin();
+    }
+
+    // 4. Property Listings Collection
+    match /listings/{listingId} {
+      // Published listings are publicly readable; drafts & pending visible only to owner/moderator
+      allow read: if resource.data.status == 'published' || isOwner(resource.data.ownerUserId) || isModerator();
+      allow create: if isAuthenticated() && request.resource.data.ownerUserId == request.auth.uid;
+      // Cannot self-assign verification badges or published status directly without moderation
+      allow update: if isOwner(resource.data.ownerUserId) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['verificationBadges', 'viewCount', 'status'])
+                   || isModerator();
+      allow delete: if isOwner(resource.data.ownerUserId) || isAdmin();
+    }
+
+    // 5. Tenant Reviews Collection
+    match /reviews/{reviewId} {
+      allow read: if true;
+      // Only authenticated users can write reviews
+      allow create: if isAuthenticated() && request.resource.data.authorUserId == request.auth.uid;
+      // Cannot modify verification status from client
+      allow update: if isModerator();
+      allow delete: if isAdmin();
+    }
+
+    // 6. Proposed Areas Collection
+    match /proposed_areas/{areaId} {
+      allow read: if true;
+      allow create: if isAuthenticated();
+      allow update, delete: if isModerator();
+    }
+
+    // 7. Viewing Requests & Inquiries
+    match /viewing_requests/{requestId} {
+      allow read: if isAuthenticated() && (resource.data.tenantUserId == request.auth.uid || resource.data.ownerUserId == request.auth.uid);
+      allow create: if isAuthenticated() && request.resource.data.tenantUserId == request.auth.uid;
+      allow update: if isAuthenticated() && (resource.data.tenantUserId == request.auth.uid || resource.data.ownerUserId == request.auth.uid);
+    }
+
+    match /inquiries/{inquiryId} {
+      allow read: if isAuthenticated() && (resource.data.senderUserId == request.auth.uid || resource.data.recipientOwnerUserId == request.auth.uid);
+      allow create: if isAuthenticated() && request.resource.data.senderUserId == request.auth.uid;
+      allow update: if isAuthenticated() && resource.data.recipientOwnerUserId == request.auth.uid;
+    }
+
+    // 8. Fraud Reports Collection
+    match /reports/{reportId} {
+      allow create: if true; // Any user can submit report
+      allow read, update, delete: if isModerator();
+    }
+
+    // 9. Immutable Audit Logs
+    match /audit_logs/{logId} {
+      allow read: if isAdmin();
+      // Server / Cloud Functions only or authenticated Admin appending
+      allow create: if isAdmin();
+      allow update, delete: if false; // Immutable! Never editable or deletable
+    }
+  }
+}
