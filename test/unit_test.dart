@@ -222,6 +222,11 @@ void main() {
       // Any upazila has available default wards
       final generalWards = locRepo.getUnionsAndWardsForUpazila('thana_bhaluka');
       expect(generalWards.isNotEmpty, isTrue);
+
+      // Verify equality and caching consistency to prevent Dropdown assertion errors
+      final generalWardsSecondCall = locRepo.getUnionsAndWardsForUpazila('thana_bhaluka');
+      expect(generalWards[0], equals(generalWardsSecondCall[0]));
+      expect(identical(generalWards[0], generalWardsSecondCall[0]), isTrue);
     });
   });
 }

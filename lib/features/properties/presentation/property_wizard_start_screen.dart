@@ -448,7 +448,7 @@ class _PropertyWizardStartScreenState extends State<PropertyWizardStartScreen> {
         const SizedBox(height: 12),
         if (_division != null)
           DropdownButtonFormField<LocationDistrict>(
-            value: _district,
+            value: districts.contains(_district) ? _district : null,
             decoration: const InputDecoration(labelText: 'জেলা'),
             items: districts.map((d) => DropdownMenuItem(value: d, child: Text(d.nameBn))).toList(),
             onChanged: (d) => setState(() {
@@ -461,7 +461,7 @@ class _PropertyWizardStartScreenState extends State<PropertyWizardStartScreen> {
         const SizedBox(height: 12),
         if (_district != null)
           DropdownButtonFormField<LocationUpazilaThana>(
-            value: _upazila,
+            value: upazilas.contains(_upazila) ? _upazila : null,
             decoration: const InputDecoration(labelText: 'থানা / উপজেলা'),
             items: upazilas.map((u) => DropdownMenuItem(value: u, child: Text(u.nameBn))).toList(),
             onChanged: (u) => setState(() {
@@ -473,7 +473,7 @@ class _PropertyWizardStartScreenState extends State<PropertyWizardStartScreen> {
         const SizedBox(height: 12),
         if (_upazila != null) ...[
           DropdownButtonFormField<LocationUnionWard>(
-            value: _unionWard,
+            value: unionWards.contains(_unionWard) ? _unionWard : null,
             decoration: const InputDecoration(labelText: 'ইউনিয়ন / ওয়ার্ড'),
             items: unionWards.map((uw) => DropdownMenuItem(value: uw, child: Text('${uw.nameBn} (${uw.type == LocalityType.union ? "ইউনিয়ন" : "ওয়ার্ড"})'))).toList(),
             onChanged: (uw) => setState(() => _unionWard = uw),
@@ -481,7 +481,7 @@ class _PropertyWizardStartScreenState extends State<PropertyWizardStartScreen> {
           const SizedBox(height: 12),
           if (areas.isNotEmpty) ...[
             DropdownButtonFormField<String>(
-              value: _areaName,
+              value: areas.any((a) => a.nameBn == _areaName) ? _areaName : null,
               decoration: const InputDecoration(labelText: 'এরিয়া / এলাকা'),
               items: areas.map((a) => DropdownMenuItem(value: a.nameBn, child: Text(a.nameBn))).toList(),
               onChanged: (a) => setState(() => _areaName = a),

@@ -23,6 +23,16 @@ class LocationDivision {
         nameEn: json['nameEn'] as String,
         nameBn: json['nameBn'] as String,
       );
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is LocationDivision &&
+          runtimeType == other.runtimeType &&
+          id == other.id;
+
+  @override
+  int get hashCode => id.hashCode;
 }
 
 class LocationDistrict {
@@ -52,6 +62,16 @@ class LocationDistrict {
         nameEn: json['nameEn'] as String,
         nameBn: json['nameBn'] as String,
       );
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is LocationDistrict &&
+          runtimeType == other.runtimeType &&
+          id == other.id;
+
+  @override
+  int get hashCode => id.hashCode;
 }
 
 class LocationUpazilaThana {
@@ -81,6 +101,16 @@ class LocationUpazilaThana {
         nameEn: json['nameEn'] as String,
         nameBn: json['nameBn'] as String,
       );
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is LocationUpazilaThana &&
+          runtimeType == other.runtimeType &&
+          id == other.id;
+
+  @override
+  int get hashCode => id.hashCode;
 }
 
 enum LocalityType { union, ward, area }
@@ -120,6 +150,16 @@ class LocationUnionWard {
           orElse: () => LocalityType.ward,
         ),
       );
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is LocationUnionWard &&
+          runtimeType == other.runtimeType &&
+          id == other.id;
+
+  @override
+  int get hashCode => id.hashCode;
 }
 
 class CanonicalArea {
@@ -155,6 +195,16 @@ class CanonicalArea {
                 .toList() ??
             [],
       );
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is CanonicalArea &&
+          runtimeType == other.runtimeType &&
+          id == other.id;
+
+  @override
+  int get hashCode => id.hashCode;
 }
 
 enum ProposedAreaStatus { pending, approved, rejected, merged }

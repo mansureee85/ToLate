@@ -25,6 +25,9 @@ class LocationRepository extends ChangeNotifier {
   // User-submitted Proposed Areas awaiting Admin Review
   final List<ProposedArea> _proposedAreas = [];
 
+  // Cache dynamically generated wards/unions to maintain instance identity
+  final Map<String, List<LocationUnionWard>> _generatedWardsCache = {};
+
   List<LocationDivision> get divisions => List.unmodifiable(_divisions);
   List<LocationDistrict> get districts => List.unmodifiable(_districts);
   List<LocationUpazilaThana> get upazilas => List.unmodifiable(_upazilas);
@@ -49,8 +52,12 @@ class LocationRepository extends ChangeNotifier {
       return existing;
     }
 
+    if (_generatedWardsCache.containsKey(upazilaId)) {
+      return _generatedWardsCache[upazilaId]!;
+    }
+
     // Default wards / unions generated dynamically so every Upazila / Thana has choices
-    return [
+    final defaultWards = [
       LocationUnionWard(id: '${upazilaId}_w01', upazilaThanaId: upazilaId, nameEn: 'Ward No 01', nameBn: 'ওয়ার্ড নং ০১', type: LocalityType.ward),
       LocationUnionWard(id: '${upazilaId}_w02', upazilaThanaId: upazilaId, nameEn: 'Ward No 02', nameBn: 'ওয়ার্ড নং ০২', type: LocalityType.ward),
       LocationUnionWard(id: '${upazilaId}_w03', upazilaThanaId: upazilaId, nameEn: 'Ward No 03', nameBn: 'ওয়ার্ড নং ০৩', type: LocalityType.ward),
@@ -63,6 +70,8 @@ class LocationRepository extends ChangeNotifier {
       LocationUnionWard(id: '${upazilaId}_w10', upazilaThanaId: upazilaId, nameEn: 'Ward No 10', nameBn: 'ওয়ার্ড নং ১০', type: LocalityType.ward),
       LocationUnionWard(id: '${upazilaId}_u01', upazilaThanaId: upazilaId, nameEn: 'Union Sadar', nameBn: 'সদর ইউনিয়ন', type: LocalityType.union),
     ];
+    _generatedWardsCache[upazilaId] = defaultWards;
+    return defaultWards;
   }
 
   /// Canonical areas / localities for an Upazila

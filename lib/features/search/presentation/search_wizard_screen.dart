@@ -331,7 +331,7 @@ class _SearchWizardScreenState extends State<SearchWizardScreen> {
         // 2. District
         if (_selectedDivision != null) ...[
           DropdownButtonFormField<LocationDistrict>(
-            value: _selectedDistrict,
+            value: districts.contains(_selectedDistrict) ? _selectedDistrict : null,
             decoration: const InputDecoration(labelText: 'জেলা (District)'),
             items: districts.map((dist) {
               return DropdownMenuItem(
@@ -354,7 +354,7 @@ class _SearchWizardScreenState extends State<SearchWizardScreen> {
         // 3. Upazila / Thana
         if (_selectedDistrict != null) ...[
           DropdownButtonFormField<LocationUpazilaThana>(
-            value: _selectedUpazila,
+            value: upazilas.contains(_selectedUpazila) ? _selectedUpazila : null,
             decoration: const InputDecoration(labelText: 'উপজেলা / থানা (Upazila / Thana)'),
             items: upazilas.map((u) {
               return DropdownMenuItem(
@@ -376,7 +376,7 @@ class _SearchWizardScreenState extends State<SearchWizardScreen> {
         // 4. Union / Ward
         if (_selectedUpazila != null) ...[
           DropdownButtonFormField<LocationUnionWard>(
-            value: _selectedUnionWard,
+            value: unionWards.contains(_selectedUnionWard) ? _selectedUnionWard : null,
             decoration: const InputDecoration(labelText: 'ইউনিয়ন / ওয়ার্ড (Union / Ward)'),
             items: unionWards.map((uw) {
               return DropdownMenuItem(
@@ -397,7 +397,7 @@ class _SearchWizardScreenState extends State<SearchWizardScreen> {
         if (_selectedUpazila != null) ...[
           if (areas.isNotEmpty) ...[
             DropdownButtonFormField<String>(
-              value: _selectedAreaName,
+              value: areas.any((a) => a.nameBn == _selectedAreaName) ? _selectedAreaName : null,
               decoration: const InputDecoration(labelText: 'এলাকা / লোকালিটি (Area)'),
               items: areas.map((a) {
                 return DropdownMenuItem(
