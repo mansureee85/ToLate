@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import '../../firebase_options.dart';
 import '../errors/app_error.dart';
 
 /// Structured result of a Google authentication session.
@@ -27,12 +28,12 @@ class GoogleAuthResult {
 class GoogleAuthService {
   static bool _isInitialized = false;
 
-  /// Ensures GoogleSignIn instance is initialized once per app session.
+  /// Ensures GoogleSignIn instance is initialized once per app session on mobile.
   static Future<void> initialize({
     String? clientId,
     String? serverClientId,
   }) async {
-    if (_isInitialized) return;
+    if (_isInitialized || kIsWeb) return;
     try {
       await GoogleSignIn.instance.initialize(
         clientId: clientId,
@@ -47,8 +48,20 @@ class GoogleAuthService {
   /// Triggers Google Sign In flow and signs into Firebase Auth.
   static Future<GoogleAuthResult?> signIn() async {
     try {
-      await initialize();
+      // 1. Offline / Dev Fallback when Firebase credentials are not yet configured in firebase_options.dart
+      if (!DefaultFirebaseOptions.isConfigured) {
+        debugPrint('[GoogleAuthService] Operating in Dev/Offline mode (Firebase placeholder credentials).');
+        await Future.delayed(const Duration(milliseconds: 600));
+        return const GoogleAuthResult(
+          id: 'google_user_demo_01',
+          email: 'google.user@tolate.bd',
+          displayName: 'গুগল ব্যবহারকারী',
+          photoUrl: null,
+          isNewUser: false,
+        );
+      }
 
+      // 2. Web flow using Firebase Auth Popup
       if (kIsWeb) {
         final auth = FirebaseAuth.instance;
         final googleProvider = GoogleAuthProvider();
@@ -66,7 +79,8 @@ class GoogleAuthService {
         );
       }
 
-      // Android / iOS / Native platforms
+      // 3. Android / iOS / Native platforms using google_sign_in
+      await initialize();
       final account = await GoogleSignIn.instance.authenticate();
       final idToken = account.authentication.idToken;
 
@@ -97,7 +111,7 @@ class GoogleAuthService {
       if (e.code == GoogleSignInExceptionCode.clientConfigurationError ||
           e.code == GoogleSignInExceptionCode.providerConfigurationError) {
         throw const AuthError(
-          'Firebase কনসোলে Google Sign-In বা SHA-1 কনফিগারেশন যোগ করা প্রয়োজন। আপাতত মোবাইল নম্বর দিয়ে লগইন করতে পারেন।',
+          'Firebase কনসোলে Google Sign-In বা SHA-1 কনফিগারেশন যুক্ত করা প্রয়োজন। আপাতত মোবাইল নম্বর দিয়ে লগইন করতে পারেন।',
         );
       }
       throw AuthError('গুগল সাইন ইন সম্পন্ন করা সম্ভব হয়নি (${e.code.name})।');
@@ -107,19 +121,25 @@ class GoogleAuthService {
     } catch (e) {
       debugPrint('[GoogleAuthService] Unexpected error: $e');
       if (e is AppError) rethrow;
-      throw AuthError('গুগল সাইন ইনে ত্রুটি হয়েছে। অনুগ্রহ করে মোবাইল নম্বর দিয়ে চেষ্টা করুন।');
+      throw AuthError('গুগল সাইন ইনে সমস্যা হয়েছে। অনুগ্রহ করে মোবাইল নম্বর দিয়ে চেষ্টা করুন।');
     }
   }
 
   /// Disconnects / signs out Google account session.
   static Future<void> signOut() async {
     try {
-      await GoogleSignIn.instance.signOut();
+      if (!kIsWeb) {
+        await GoogleSignIn.instance.signOut();
+      }
     } catch (_) {}
   }
 
   static String _mapFirebaseError(FirebaseAuthException e) {
     switch (e.code) {
+      case 'popup-closed-by-user':
+        return 'গুগল লগইন উইন্ডো বন্ধ করা হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।';
+      case 'popup-blocked':
+        return 'ব্রাউজারের পপ-আপ ব্লকার উইন্ডোটি আটকে দিয়েছে। পপ-আপ অনুমোদন করে আবার চেষ্টা করুন।';
       case 'account-exists-with-different-credential':
         return 'এই ইমেইল দিয়ে অন্য মাধ্যমে আগেই অ্যাকাউন্ট খোলা হয়েছে।';
       case 'invalid-credential':
@@ -133,4 +153,3 @@ class GoogleAuthService {
     }
   }
 }
-

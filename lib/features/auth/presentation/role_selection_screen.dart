@@ -61,132 +61,159 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isWide = screenWidth > 600;
+
     return Scaffold(
+      backgroundColor: isWide ? const Color(0xFFF3F4F6) : Colors.white,
       appBar: AppBar(
         title: const Text('আপনার পরিচয় নির্বাচন করুন'),
+        elevation: 0,
       ),
       body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.all(20),
-                children: [
-                  Text(
-                    'আপনি ToLate কীভাবে ব্যবহার করতে চান?',
-                    style: AppTextStyles.headingMedium,
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'একাধিক ভূমিকা নির্বাচন করতে পারেন। পরবর্তীতে সেটিংস থেকে পরিবর্তন করা যাবে।',
-                    style: AppTextStyles.bodyMedium,
-                  ),
-                  const SizedBox(height: 20),
-                  ..._roleOptions.map((opt) {
-                    final role = opt['role'] as UserRole;
-                    final isSelected = _selectedRoles.contains(role);
-
-                    return InkWell(
-                      onTap: () {
-                        setState(() {
-                          if (isSelected) {
-                            if (_selectedRoles.length > 1) {
-                              _selectedRoles.remove(role);
-                            }
-                          } else {
-                            _selectedRoles.add(role);
-                          }
-                        });
-                      },
-                      borderRadius: BorderRadius.circular(12),
-                      child: Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? AppColors.primaryLight.withOpacity(0.4)
-                              : AppColors.surface,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: isSelected ? AppColors.primary : AppColors.border,
-                            width: isSelected ? 1.8 : 1.0,
-                          ),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 540),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(isWide ? 16 : 0),
+                border: isWide ? Border.all(color: AppColors.border, width: 1.2) : null,
+                boxShadow: isWide
+                    ? [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 20,
+                          offset: const Offset(0, 6),
                         ),
-                        child: Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(10),
+                      ]
+                    : null,
+              ),
+              margin: EdgeInsets.all(isWide ? 24.0 : 0.0),
+              child: Column(
+                children: [
+                  Expanded(
+                    child: ListView(
+                      padding: const EdgeInsets.all(20),
+                      children: [
+                        Text(
+                          'আপনি ToLate কীভাবে ব্যবহার করতে চান?',
+                          style: AppTextStyles.headingMedium,
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'একাধিক ভূমিকা নির্বাচন করতে পারেন। পরবর্তীতে সেটিংস থেকে পরিবর্তন করা যাবে।',
+                          style: AppTextStyles.bodyMedium,
+                        ),
+                        const SizedBox(height: 20),
+                        ..._roleOptions.map((opt) {
+                          final role = opt['role'] as UserRole;
+                          final isSelected = _selectedRoles.contains(role);
+
+                          return InkWell(
+                            onTap: () {
+                              setState(() {
+                                if (isSelected) {
+                                  if (_selectedRoles.length > 1) {
+                                    _selectedRoles.remove(role);
+                                  }
+                                } else {
+                                  _selectedRoles.add(role);
+                                }
+                              });
+                            },
+                            borderRadius: BorderRadius.circular(12),
+                            child: Container(
+                              margin: const EdgeInsets.only(bottom: 12),
+                              padding: const EdgeInsets.all(16),
                               decoration: BoxDecoration(
                                 color: isSelected
-                                    ? AppColors.primary
-                                    : AppColors.surfaceVariant,
-                                shape: BoxShape.circle,
+                                    ? AppColors.primaryLight.withOpacity(0.4)
+                                    : AppColors.surface,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: isSelected ? AppColors.primary : AppColors.border,
+                                  width: isSelected ? 1.8 : 1.0,
+                                ),
                               ),
-                              child: Icon(
-                                opt['icon'] as IconData,
-                                color: isSelected
-                                    ? Colors.white
-                                    : AppColors.textSecondary,
-                                size: 24,
-                              ),
-                            ),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                              child: Row(
                                 children: [
-                                  Text(
-                                    opt['titleBn'] as String,
-                                    style: TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.bold,
+                                  Container(
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
                                       color: isSelected
                                           ? AppColors.primary
-                                          : AppColors.textPrimary,
+                                          : AppColors.surfaceVariant,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(
+                                      opt['icon'] as IconData,
+                                      color: isSelected
+                                          ? Colors.white
+                                          : AppColors.textSecondary,
+                                      size: 24,
                                     ),
                                   ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    opt['descBn'] as String,
-                                    style: AppTextStyles.bodySmall.copyWith(
-                                      color: AppColors.textSecondary,
+                                  const SizedBox(width: 14),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          opt['titleBn'] as String,
+                                          style: TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.bold,
+                                            color: isSelected
+                                                ? AppColors.primary
+                                                : AppColors.textPrimary,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          opt['descBn'] as String,
+                                          style: AppTextStyles.bodySmall.copyWith(
+                                            color: AppColors.textSecondary,
+                                          ),
+                                        ),
+                                      ],
                                     ),
+                                  ),
+                                  Checkbox(
+                                    value: isSelected,
+                                    activeColor: AppColors.primary,
+                                    onChanged: (val) {
+                                      setState(() {
+                                        if (val == true) {
+                                          _selectedRoles.add(role);
+                                        } else if (_selectedRoles.length > 1) {
+                                          _selectedRoles.remove(role);
+                                        }
+                                      });
+                                    },
                                   ),
                                 ],
                               ),
                             ),
-                            Checkbox(
-                              value: isSelected,
-                              activeColor: AppColors.primary,
-                              onChanged: (val) {
-                                setState(() {
-                                  if (val == true) {
-                                    _selectedRoles.add(role);
-                                  } else if (_selectedRoles.length > 1) {
-                                    _selectedRoles.remove(role);
-                                  }
-                                });
-                              },
-                            ),
-                          ],
-                        ),
+                          );
+                        }),
+                      ],
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: AppButton(
+                        label: 'প্রবেশ করুন (Complete Setup)',
+                        onPressed: _handleContinue,
                       ),
-                    );
-                  }),
+                    ),
+                  ),
                 ],
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: SizedBox(
-                width: double.infinity,
-                child: AppButton(
-                  label: 'প্রবেশ করুন (Complete Setup)',
-                  onPressed: _handleContinue,
-                ),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );

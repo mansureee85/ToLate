@@ -104,6 +104,16 @@ class AuthRepository extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
 
+    if (!FirebaseService.isConfigured) {
+      _pendingPhoneNumber = normalized;
+      _lastOtpSentTime = DateTime.now();
+      _otpAttempts = 0;
+      _verificationId = 'dev_session_$normalized';
+      _isLoading = false;
+      notifyListeners();
+      return;
+    }
+
     final completer = Completer<void>();
 
     try {
@@ -181,6 +191,38 @@ class AuthRepository extends ChangeNotifier {
     notifyListeners();
 
     try {
+      if (!FirebaseService.isConfigured) {
+        if (enteredOtp.trim() != '123456') {
+          throw const AuthError('ভুল ওটিপি কোড। ডেমো ওটিপি কোড ১২৩৪৫৬ দিন।');
+        }
+
+        final prefs = await SharedPreferences.getInstance();
+        final uid = 'user_${_pendingPhoneNumber!.replaceAll('+', '')}';
+
+        final user = UserModel(
+          id: uid,
+          displayName: prefs.getString('auth_display_name') ?? 'ব্যবহারকারী',
+          phoneNumber: _pendingPhoneNumber,
+          isPhoneVerified: true,
+          authProvider: 'phone',
+          roles: const [UserRole.tenant],
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        );
+
+        _currentUser = user;
+        await prefs.setString('auth_user_id', user.id);
+        if (user.phoneNumber != null) {
+          await prefs.setString('auth_phone', user.phoneNumber!);
+        }
+        await prefs.setBool('auth_phone_verified', true);
+        await prefs.setString('auth_provider', 'phone');
+
+        _pendingPhoneNumber = null;
+        _verificationId = null;
+        return user;
+      }
+
       final auth = FirebaseService.auth ?? FirebaseAuth.instance;
       final credential = PhoneAuthProvider.credential(
         verificationId: _verificationId!,
