@@ -15,6 +15,8 @@ import '../models/user_model.dart';
 class AuthRepository extends ChangeNotifier {
   UserModel? _currentUser;
   bool _isLoading = false;
+  bool _isGoogleLoading = false;
+  bool _isPhoneLoading = false;
   String? _pendingPhoneNumber;
   String? _verificationId;
   int? _resendToken;
@@ -23,7 +25,9 @@ class AuthRepository extends ChangeNotifier {
 
   UserModel? get currentUser => _currentUser;
   bool get isAuthenticated => _currentUser != null;
-  bool get isLoading => _isLoading;
+  bool get isLoading => _isLoading || _isGoogleLoading || _isPhoneLoading;
+  bool get isGoogleLoading => _isGoogleLoading;
+  bool get isPhoneLoading => _isPhoneLoading;
   String? get pendingPhoneNumber => _pendingPhoneNumber;
   String? get verificationId => _verificationId;
 
@@ -101,7 +105,7 @@ class AuthRepository extends ChangeNotifier {
       );
     }
 
-    _isLoading = true;
+    _isPhoneLoading = true;
     notifyListeners();
 
     if (!FirebaseService.isConfigured) {
@@ -109,7 +113,7 @@ class AuthRepository extends ChangeNotifier {
       _lastOtpSentTime = DateTime.now();
       _otpAttempts = 0;
       _verificationId = 'dev_session_$normalized';
-      _isLoading = false;
+      _isPhoneLoading = false;
       notifyListeners();
       return;
     }
@@ -127,7 +131,6 @@ class AuthRepository extends ChangeNotifier {
         timeout: const Duration(seconds: 60),
         forceResendingToken: _resendToken,
         verificationCompleted: (PhoneAuthCredential credential) async {
-          // Instant verification / auto-retrieval
           try {
             final userCredential = await auth.signInWithCredential(credential);
             if (userCredential.user != null) {
@@ -138,7 +141,7 @@ class AuthRepository extends ChangeNotifier {
           }
         },
         verificationFailed: (FirebaseAuthException e) {
-          _isLoading = false;
+          _isPhoneLoading = false;
           notifyListeners();
           final errorMsg = _mapFirebasePhoneAuthError(e);
           if (!completer.isCompleted) {
@@ -148,7 +151,7 @@ class AuthRepository extends ChangeNotifier {
         codeSent: (String verificationId, int? resendToken) {
           _verificationId = verificationId;
           _resendToken = resendToken;
-          _isLoading = false;
+          _isPhoneLoading = false;
           notifyListeners();
           if (!completer.isCompleted) {
             completer.complete();
@@ -161,10 +164,13 @@ class AuthRepository extends ChangeNotifier {
 
       return await completer.future;
     } catch (e) {
-      _isLoading = false;
+      _isPhoneLoading = false;
       notifyListeners();
       if (e is AppError) rethrow;
       throw AuthError('ওটিপি পাঠাতে সমস্যা হয়েছে: ${e.toString()}');
+    } finally {
+      _isPhoneLoading = false;
+      notifyListeners();
     }
   }
 
@@ -187,7 +193,7 @@ class AuthRepository extends ChangeNotifier {
     }
 
     _otpAttempts++;
-    _isLoading = true;
+    _isPhoneLoading = true;
     notifyListeners();
 
     try {
@@ -242,7 +248,7 @@ class AuthRepository extends ChangeNotifier {
     } on FirebaseAuthException catch (e) {
       throw AuthError(_mapFirebasePhoneAuthError(e));
     } finally {
-      _isLoading = false;
+      _isPhoneLoading = false;
       notifyListeners();
     }
   }
@@ -255,9 +261,13 @@ class AuthRepository extends ChangeNotifier {
 
     UserModel? user;
     final firestore = FirebaseService.firestore;
-    if (firestore != null) {
+    if (firestore != null && FirebaseService.isConfigured) {
       try {
-        final doc = await firestore.collection('users').doc(uid).get();
+        final doc = await firestore
+            .collection('users')
+            .doc(uid)
+            .get()
+            .timeout(const Duration(seconds: 3));
         if (doc.exists && doc.data() != null) {
           user = UserModel.fromJson(doc.data()!);
         }
@@ -284,9 +294,13 @@ class AuthRepository extends ChangeNotifier {
     }
     await prefs.setBool('auth_phone_verified', true);
 
-    if (firestore != null) {
+    if (firestore != null && FirebaseService.isConfigured) {
       try {
-        await firestore.collection('users').doc(user.id).set(user.toJson(), SetOptions(merge: true));
+        await firestore
+            .collection('users')
+            .doc(user.id)
+            .set(user.toJson(), SetOptions(merge: true))
+            .timeout(const Duration(seconds: 3));
       } catch (e) {
         debugPrint('[AuthRepository] Firestore user sync notice: $e');
       }
@@ -413,7 +427,7 @@ class AuthRepository extends ChangeNotifier {
 
   /// Sign in or Sign up using Google Account.
   Future<UserModel?> signInWithGoogle() async {
-    _isLoading = true;
+    _isGoogleLoading = true;
     notifyListeners();
 
     try {
@@ -427,9 +441,13 @@ class AuthRepository extends ChangeNotifier {
       final firestore = FirebaseService.firestore;
       UserModel? user;
 
-      if (firestore != null) {
+      if (firestore != null && FirebaseService.isConfigured) {
         try {
-          final doc = await firestore.collection('users').doc(uid).get();
+          final doc = await firestore
+              .collection('users')
+              .doc(uid)
+              .get()
+              .timeout(const Duration(seconds: 3));
           if (doc.exists && doc.data() != null) {
             user = UserModel.fromJson(doc.data()!);
           }
@@ -464,9 +482,13 @@ class AuthRepository extends ChangeNotifier {
       }
       await prefs.setString('auth_provider', 'google');
 
-      if (firestore != null) {
+      if (firestore != null && FirebaseService.isConfigured) {
         try {
-          await firestore.collection('users').doc(user.id).set(user.toJson(), SetOptions(merge: true));
+          await firestore
+              .collection('users')
+              .doc(user.id)
+              .set(user.toJson(), SetOptions(merge: true))
+              .timeout(const Duration(seconds: 3));
         } catch (e) {
           debugPrint('[AuthRepository] Firestore Google user sync notice: $e');
         }
@@ -475,7 +497,7 @@ class AuthRepository extends ChangeNotifier {
       notifyListeners();
       return user;
     } finally {
-      _isLoading = false;
+      _isGoogleLoading = false;
       notifyListeners();
     }
   }

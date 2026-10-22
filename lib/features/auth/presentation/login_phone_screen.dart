@@ -131,7 +131,7 @@ class _LoginPhoneScreenState extends State<LoginPhoneScreen> {
                         const SizedBox(height: 18),
                       ],
                       GoogleSignInButton(
-                        isLoading: authRepo.isLoading,
+                        isLoading: authRepo.isGoogleLoading,
                         onPressed: _handleGoogleSignIn,
                       ),
                       const SizedBox(height: 20),
@@ -146,7 +146,7 @@ class _LoginPhoneScreenState extends State<LoginPhoneScreen> {
                       const SizedBox(height: 20),
                       AppButton(
                         label: 'ওটিপি পাঠান (Send OTP)',
-                        isLoading: authRepo.isLoading,
+                        isLoading: authRepo.isPhoneLoading,
                         onPressed: _handleSendOtp,
                       ),
                       const SizedBox(height: 20),
