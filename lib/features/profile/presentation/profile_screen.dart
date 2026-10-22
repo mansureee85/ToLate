@@ -134,6 +134,20 @@ class ProfileScreen extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 4),
+                  if (user.email != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 2.0),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.email_outlined, size: 14, color: AppColors.textSecondary),
+                          const SizedBox(width: 4),
+                          Text(
+                            user.email!,
+                            style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
+                          ),
+                        ],
+                      ),
+                    ),
                   if (user.privacySettings.showPhoneNumber && user.phoneNumber != null)
                     Text(
                       PhoneValidator.formatForDisplay(user.phoneNumber),

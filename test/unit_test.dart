@@ -273,5 +273,44 @@ void main() {
       );
     });
   });
+
+  group('Google Auth & Modular Architecture', () {
+    test('UserModel supports email and authProvider serialization', () {
+      final user = UserModel(
+        id: 'google_uid_123',
+        displayName: 'কামরুল ইসলাম',
+        email: 'kamrul@gmail.com',
+        authProvider: 'google',
+        profilePhotoUrl: 'https://lh3.googleusercontent.com/photo.jpg',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      final json = user.toJson();
+      expect(json['email'], 'kamrul@gmail.com');
+      expect(json['authProvider'], 'google');
+      expect(json['displayName'], 'কামরুল ইসলাম');
+
+      final fromJson = UserModel.fromJson(json);
+      expect(fromJson.email, 'kamrul@gmail.com');
+      expect(fromJson.authProvider, 'google');
+      expect(fromJson.id, 'google_uid_123');
+    });
+
+    test('UserModel defaults authProvider to phone when unspecified in json', () {
+      final json = {
+        'id': 'user_phone_456',
+        'displayName': 'রহিম উদ্দিন',
+        'phoneNumber': '+8801712345678',
+        'createdAt': DateTime.now().toIso8601String(),
+        'updatedAt': DateTime.now().toIso8601String(),
+      };
+
+      final user = UserModel.fromJson(json);
+      expect(user.authProvider, 'phone');
+      expect(user.phoneNumber, '+8801712345678');
+      expect(user.email, isNull);
+    });
+  });
 }
 

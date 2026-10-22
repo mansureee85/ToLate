@@ -7,6 +7,7 @@ import '../../core/constants/app_constants.dart';
 import '../../core/constants/property_enums.dart';
 import '../../core/errors/app_error.dart';
 import '../../core/services/firebase_service.dart';
+import '../../core/services/google_auth_service.dart';
 import '../../core/validation/phone_validator.dart';
 import '../models/user_model.dart';
 
@@ -48,8 +49,10 @@ class AuthRepository extends ChangeNotifier {
       final userId = prefs.getString('auth_user_id');
       if (userId != null) {
         final displayName = prefs.getString('auth_display_name');
+        final email = prefs.getString('auth_email');
         final phone = prefs.getString('auth_phone');
         final isVerified = prefs.getBool('auth_phone_verified') ?? false;
+        final authProvider = prefs.getString('auth_provider') ?? 'phone';
         final profilePhoto = prefs.getString('auth_profile_photo');
         final coverPhoto = prefs.getString('auth_cover_photo');
         final bio = prefs.getString('auth_bio');
@@ -58,8 +61,10 @@ class AuthRepository extends ChangeNotifier {
         _currentUser = UserModel(
           id: userId,
           displayName: displayName,
+          email: email,
           phoneNumber: phone,
           isPhoneVerified: isVerified,
+          authProvider: authProvider,
           profilePhotoUrl: profilePhoto,
           coverPhotoUrl: coverPhoto,
           bio: bio,
@@ -364,12 +369,91 @@ class AuthRepository extends ChangeNotifier {
     }
   }
 
+  /// Sign in or Sign up using Google Account.
+  Future<UserModel?> signInWithGoogle() async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final result = await GoogleAuthService.signIn();
+      if (result == null) {
+        return null;
+      }
+
+      final prefs = await SharedPreferences.getInstance();
+      final uid = result.id;
+      final firestore = FirebaseService.firestore;
+      UserModel? user;
+
+      if (firestore != null) {
+        try {
+          final doc = await firestore.collection('users').doc(uid).get();
+          if (doc.exists && doc.data() != null) {
+            user = UserModel.fromJson(doc.data()!);
+          }
+        } catch (e) {
+          debugPrint('[AuthRepository] Firestore Google user lookup notice: $e');
+        }
+      }
+
+      user ??= UserModel(
+        id: uid,
+        displayName: result.displayName ?? 'ইউজার',
+        email: result.email,
+        profilePhotoUrl: result.photoUrl,
+        authProvider: 'google',
+        isPhoneVerified: false,
+        roles: const [UserRole.tenant],
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      _currentUser = user;
+
+      await prefs.setString('auth_user_id', user.id);
+      if (user.email != null) {
+        await prefs.setString('auth_email', user.email!);
+      }
+      if (user.displayName != null) {
+        await prefs.setString('auth_display_name', user.displayName!);
+      }
+      if (user.profilePhotoUrl != null) {
+        await prefs.setString('auth_profile_photo', user.profilePhotoUrl!);
+      }
+      await prefs.setString('auth_provider', 'google');
+
+      if (firestore != null) {
+        try {
+          await firestore.collection('users').doc(user.id).set(user.toJson(), SetOptions(merge: true));
+        } catch (e) {
+          debugPrint('[AuthRepository] Firestore Google user sync notice: $e');
+        }
+      }
+
+      notifyListeners();
+      return user;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   /// Logout from active session.
   Future<void> logout() async {
     _currentUser = null;
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('auth_user_id');
     await prefs.remove('auth_admin_role');
+    await prefs.remove('auth_email');
+    await prefs.remove('auth_phone');
+    await prefs.remove('auth_provider');
+
+    try {
+      await GoogleAuthService.signOut();
+      final auth = FirebaseService.auth ?? FirebaseAuth.instance;
+      await auth.signOut();
+    } catch (_) {}
+
     notifyListeners();
   }
 }

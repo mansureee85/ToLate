@@ -1,0 +1,34 @@
+import 'package:flutter/material.dart';
+import '../../../../app/app_text_styles.dart';
+
+/// Top branding header for auth flows.
+class AuthHeader extends StatelessWidget {
+  final String title;
+  final String subtitle;
+
+  const AuthHeader({
+    super.key,
+    this.title = 'স্বাগতম ToLate-এ',
+    this.subtitle = 'আপনার কাঙ্ক্ষিত বাসা, ফ্ল্যাট বা মেস সহজে খুঁজে পেতে অথবা বিজ্ঞাপন দিতে সাইন ইন করুন।',
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 8),
+        Text(
+          title,
+          style: AppTextStyles.headingMedium,
+        ),
+        const SizedBox(height: 6),
+        Text(
+          subtitle,
+          style: AppTextStyles.bodyMedium,
+        ),
+      ],
+    );
+  }
+}
+

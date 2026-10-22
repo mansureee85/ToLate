@@ -34,8 +34,10 @@ class UserPrivacySettings {
 class UserModel {
   final String id;
   final String? displayName;
+  final String? email;
   final String? phoneNumber;
   final bool isPhoneVerified;
+  final String? authProvider;
   final String? bio;
   final String? profilePhotoUrl;
   final String? coverPhotoUrl;
@@ -50,8 +52,10 @@ class UserModel {
   const UserModel({
     required this.id,
     this.displayName,
+    this.email,
     this.phoneNumber,
     this.isPhoneVerified = false,
+    this.authProvider = 'phone',
     this.bio,
     this.profilePhotoUrl,
     this.coverPhotoUrl,
@@ -68,8 +72,10 @@ class UserModel {
 
   UserModel copyWith({
     String? displayName,
+    String? email,
     String? phoneNumber,
     bool? isPhoneVerified,
+    String? authProvider,
     String? bio,
     String? profilePhotoUrl,
     String? coverPhotoUrl,
@@ -83,8 +89,10 @@ class UserModel {
     return UserModel(
       id: id,
       displayName: displayName ?? this.displayName,
+      email: email ?? this.email,
       phoneNumber: phoneNumber ?? this.phoneNumber,
       isPhoneVerified: isPhoneVerified ?? this.isPhoneVerified,
+      authProvider: authProvider ?? this.authProvider,
       bio: bio ?? this.bio,
       profilePhotoUrl: profilePhotoUrl ?? this.profilePhotoUrl,
       coverPhotoUrl: coverPhotoUrl ?? this.coverPhotoUrl,
@@ -102,8 +110,10 @@ class UserModel {
     return {
       'id': id,
       'displayName': displayName,
+      'email': email,
       'phoneNumber': phoneNumber,
       'isPhoneVerified': isPhoneVerified,
+      'authProvider': authProvider,
       'bio': bio,
       'profilePhotoUrl': profilePhotoUrl,
       'coverPhotoUrl': coverPhotoUrl,
@@ -121,8 +131,10 @@ class UserModel {
     return UserModel(
       id: json['id'] as String,
       displayName: json['displayName'] as String?,
+      email: json['email'] as String?,
       phoneNumber: json['phoneNumber'] as String?,
       isPhoneVerified: json['isPhoneVerified'] as bool? ?? false,
+      authProvider: json['authProvider'] as String? ?? 'phone',
       bio: json['bio'] as String?,
       profilePhotoUrl: json['profilePhotoUrl'] as String?,
       coverPhotoUrl: json['coverPhotoUrl'] as String?,
